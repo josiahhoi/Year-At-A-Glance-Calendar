@@ -3,16 +3,26 @@
 A web app that combines a **year-at-a-glance calendar** (the whole year in 12
 columns, like a wall planner) with a **Google Calendar month/week view** — all
 backed directly by Google Calendar. It replaces the old Google Sheet +
-Apps Script sync workflow: the year grid *is* a live, editable view of a
-dedicated Google Calendar, so there is no syncing and nothing to drift.
+Apps Script sync workflow: the year grid is a live, editable view of your
+**primary calendar**, so there is no syncing and nothing to drift.
+
+## The `#` convention
+
+The year grid shows every event on your primary calendar whose name starts
+with `#`. That's the whole rule:
+
+- Add `#` to the start of an event's name in Google Calendar → it appears on
+  the year grid (the `#` itself is hidden there).
+- Create an event on the year grid → it's written to your primary calendar
+  with the `#` added automatically.
+- Remove the `#` in Google Calendar → it drops off the year grid.
 
 ## Views
 
 - **Year** — 12 month columns with day rows, exactly like the spreadsheet
-  layout. Events on the designated "glance" calendar (default: **Sheet
-  Events**) render as colored blocks; multi-day events are contiguous vertical
-  blocks; overlapping events sit side-by-side; events crossing a month
-  boundary appear in both columns with dotted clip markers.
+  layout. `#`-events render as colored blocks; multi-day events are
+  contiguous vertical blocks; overlapping events sit side-by-side; events
+  crossing a month boundary appear in both columns with dotted clip markers.
   - **Click** an empty day → create an event
   - **Drag** vertically on empty days → create a multi-day event
   - **Click** a block → edit title/dates or delete (cross-month ranges are
@@ -20,6 +30,9 @@ dedicated Google Calendar, so there is no syncing and nothing to drift.
   - **Drag** a block → move it; **drag its top/bottom edge** → resize
   - Changes save to Google Calendar instantly (optimistic, with rollback +
     a toast if the API call fails). `Esc` cancels an in-flight drag.
+  - Timed `#`-events (ones with a clock time) and recurring events display
+    on the grid but are edited in Google Calendar / the Week view, so the
+    grid can never flatten a timed event into an all-day one.
 - **Month / Week** — overlays **all** your calendars with their Google colors
   and show/hide toggles (like Google Calendar itself). Read-only in v1; click
   any event for details and a link into Google Calendar.
@@ -60,14 +73,7 @@ so URLs survive reloads and can be bookmarked.
   3. Push to `main` — the workflow in `.github/workflows/deploy.yml` tests,
      builds, and deploys automatically.
 
-### 3. Pick the glance calendar
-
-On first sign-in the app looks for a writable calendar named **Sheet
-Events** and uses it for the year view. If it isn't found (or you want a
-different one), the settings dialog (⚙️) lets you pick any calendar you can
-write to.
-
-### 4. Retire the old Apps Script sync ⚠️
+### 3. Retire the old Apps Script sync ⚠️
 
 If you still have the Sheets ↔ Calendar sync script installed, **delete its
 triggers** (Apps Script editor → Triggers → remove the `onSheetEdit` and

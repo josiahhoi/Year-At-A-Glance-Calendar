@@ -148,13 +148,13 @@ export function useGridDrag(
 
       let mode: DragPreview['mode'] = 'create';
       if (seg) {
-        // Recurring events and cross-month moves are popover-only; a drag on
-        // them is treated as a click.
+        // Recurring events, timed events, and cross-month moves are
+        // popover-only; a drag on them is treated as a click.
         const body = bodyRef.current!;
         const yInBody = e.clientY - body.getBoundingClientRect().top;
         const blockTop = (seg.startDay - 1) * rowHeight();
         const blockBottom = seg.endDay * rowHeight();
-        const editable = !seg.event.recurringEventId;
+        const editable = !seg.event.recurringEventId && seg.event.isAllDay;
         if (editable && !seg.clippedTop && yInBody - blockTop < RESIZE_ZONE_PX) {
           mode = 'resize-start';
         } else if (editable && !seg.clippedBottom && blockBottom - yInBody < RESIZE_ZONE_PX) {
@@ -193,10 +193,11 @@ export function useGridDrag(
     onPointerMove(e) {
       const state = dragRef.current;
       if (!state || e.pointerId !== state.pointerId) return;
-      // Click-only targets (recurring / cross-month blocks) never drag.
+      // Click-only targets (recurring / timed / cross-month blocks) never drag.
       const clickOnly =
         state.seg &&
         (state.seg.event.recurringEventId ||
+          !state.seg.event.isAllDay ||
           (state.mode === 'move' && (state.seg.clippedTop || state.seg.clippedBottom)));
       if (clickOnly) return;
 

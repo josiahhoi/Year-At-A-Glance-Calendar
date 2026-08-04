@@ -3,7 +3,7 @@ import styles from './app.module.css';
 import { useAuth } from './auth/AuthContext';
 import { showToast, ToastHost } from './components/Toast';
 import { SettingsModal } from './components/SettingsModal';
-import { GOOGLE_CLIENT_ID, DEFAULT_GLANCE_CALENDAR_NAME } from './config';
+import { GOOGLE_CLIENT_ID } from './config';
 import { useCalendars } from './hooks/useCalendars';
 import { updateSettings, useSettings } from './hooks/useSettings';
 import { monthOf, today, yearOf } from './model/isoDate';
@@ -49,20 +49,6 @@ function SignedInApp() {
   const calendars = useCalendars();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // First run: adopt the calendar named "Sheet Events" as the glance
-  // calendar, or ask the user to pick one.
-  useEffect(() => {
-    if (!calendars.data || settings.glanceCalendarId) return;
-    const match = calendars.data.find(
-      (c) => c.summary === DEFAULT_GLANCE_CALENDAR_NAME && c.writable,
-    );
-    if (match) {
-      updateSettings({ glanceCalendarId: match.id });
-    } else {
-      setSettingsOpen(true);
-    }
-  }, [calendars.data, settings.glanceCalendarId]);
-
   // Remember the last viewed year for the default route.
   useEffect(() => {
     if (route.view === 'year' && route.year !== settings.lastYear) {
@@ -70,8 +56,7 @@ function SignedInApp() {
     }
   }, [route, settings.lastYear]);
 
-  const glanceCalendar =
-    calendars.data?.find((c) => c.id === settings.glanceCalendarId) ?? null;
+  const primaryCalendar = calendars.data?.find((c) => c.primary) ?? null;
 
   return (
     <div className={styles.shell}>
@@ -107,7 +92,7 @@ function SignedInApp() {
         {calendars.data && route.view === 'year' && (
           <YearView
             year={route.year}
-            glanceCalendar={glanceCalendar}
+            primaryCalendar={primaryCalendar}
             onNavigate={navigate}
             onOpenSettings={() => setSettingsOpen(true)}
           />

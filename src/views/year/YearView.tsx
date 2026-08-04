@@ -3,6 +3,7 @@ import type { CalendarInfo } from '../../api/calendarList';
 import { useEventMutations } from '../../hooks/useEventMutations';
 import { useYearEvents } from '../../hooks/useYearEvents';
 import type { AppEvent } from '../../model/eventModel';
+import { isHashTitle, stripHash, withHash } from '../../model/hashTag';
 import { layoutIntervals, type IntervalItem } from '../../model/lanes';
 import { monthOf, today, yearOf, type IsoDate } from '../../model/isoDate';
 import { monthSegments } from '../../model/segments';
@@ -14,7 +15,7 @@ import styles from './yearView.module.css';
 
 interface YearViewProps {
   year: number;
-  glanceCalendar: CalendarInfo | null;
+  primaryCalendar: CalendarInfo | null;
   onNavigate: (route: Route) => void;
   onOpenSettings: () => void;
 }
@@ -23,18 +24,20 @@ type PopoverState =
   | { kind: 'create'; startDate: IsoDate; endDate: IsoDate; anchor: AnchorRect }
   | { kind: 'edit'; eventId: string; anchor: AnchorRect };
 
-export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: YearViewProps) {
-  const { data: events, isLoading, error, refetch } = useYearEvents(glanceCalendar?.id ?? null, year);
-  const mutations = useEventMutations(glanceCalendar?.id ?? '');
+export function YearView({ year, primaryCalendar, onNavigate, onOpenSettings }: YearViewProps) {
+  const { data, isLoading, error, refetch } = useYearEvents(primaryCalendar?.id ?? null, year);
+  const mutations = useEventMutations(primaryCalendar?.id ?? '');
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const todayDate = today();
+
+  // The year grid shows only #-marked events from the primary calendar.
+  const events = useMemo(() => (data ?? []).filter((e) => isHashTitle(e.title)), [data]);
 
   // Lay out each month's segments into lanes.
   const placedByMonth = useMemo(() => {
     const byMonth = new Map<number, PlacedSegment[]>();
     for (let m = 1; m <= 12; m++) byMonth.set(m, []);
-    if (!events) return byMonth;
 
     const segsByMonth = new Map<number, ReturnType<typeof monthSegments>>();
     for (const event of events) {
@@ -65,7 +68,7 @@ export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: Y
 
   const eventById = useMemo(() => {
     const map = new Map<string, AppEvent>();
-    for (const e of events ?? []) map.set(e.id, e);
+    for (const e of events) map.set(e.id, e);
     return map;
   }, [events]);
 
@@ -89,18 +92,25 @@ export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: Y
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
 
-  if (!glanceCalendar) {
+  if (!primaryCalendar) {
     return (
       <div className={styles.empty}>
-        <p>Pick which Google Calendar holds your year-at-a-glance events.</p>
-        <button className="btn btn-primary" onClick={onOpenSettings}>
-          Choose calendar
+        <p>Couldn't find your primary Google Calendar.</p>
+        <button className="btn" onClick={() => refetch()}>
+          Retry
         </button>
       </div>
     );
   }
 
   const editingEvent = popover?.kind === 'edit' ? eventById.get(popover.eventId) : undefined;
+  const editingReadOnly = editingEvent
+    ? editingEvent.recurringEventId
+      ? ('recurring' as const)
+      : !editingEvent.isAllDay
+        ? ('timed' as const)
+        : undefined
+    : undefined;
 
   return (
     <div className={styles.view}>
@@ -131,9 +141,9 @@ export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: Y
         >
           Today
         </button>
-        <button className={styles.calChip} onClick={onOpenSettings} title="Change calendar">
-          <span className={styles.calDot} style={{ background: glanceCalendar.bg }} />
-          {glanceCalendar.summary}
+        <button className={styles.calChip} onClick={onOpenSettings} title="Events starting with # on this calendar appear here">
+          <span className={styles.calDot} style={{ background: primaryCalendar.bg }} />
+          # · {primaryCalendar.summary}
         </button>
         {isLoading && <span className={styles.loading}>Loading…</span>}
         {error != null && (
@@ -142,6 +152,12 @@ export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: Y
             <button className="btn" onClick={() => refetch()}>
               Retry
             </button>
+          </span>
+        )}
+        {!isLoading && !error && events.length === 0 && (
+          <span className={styles.hint}>
+            Start an event's name with <b>#</b> in Google Calendar to pin it here — or click any
+            day to add one.
           </span>
         )}
       </div>
@@ -154,7 +170,7 @@ export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: Y
               year={year}
               month={month}
               placed={placedByMonth.get(month) ?? []}
-              color={glanceCalendar.bg}
+              color={primaryCalendar.bg}
               todayDate={todayDate}
               callbacks={{
                 onClickDay: (day, anchor) => {
@@ -190,7 +206,8 @@ export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: Y
           initialEnd={popover.endDate}
           onClose={() => setPopover(null)}
           onSave={(title, startDate, endDate) => {
-            mutations.createEvent.mutate({ title, startDate, endDate });
+            // The marker lives in Google Calendar; the grid adds it for you.
+            mutations.createEvent.mutate({ title: withHash(title), startDate, endDate });
             setPopover(null);
           }}
         />
@@ -200,16 +217,16 @@ export function YearView({ year, glanceCalendar, onNavigate, onOpenSettings }: Y
         <EventPopover
           mode="edit"
           anchor={popover.anchor}
-          initialTitle={editingEvent.title}
+          initialTitle={stripHash(editingEvent.title)}
           initialStart={editingEvent.startDate}
           initialEnd={editingEvent.endDate}
-          recurring={!!editingEvent.recurringEventId}
+          readOnlyReason={editingReadOnly}
           htmlLink={editingEvent.htmlLink}
           onClose={() => setPopover(null)}
           onSave={(title, startDate, endDate) => {
             mutations.updateEvent.mutate({
               event: editingEvent,
-              title: title !== editingEvent.title ? title : undefined,
+              title: title !== stripHash(editingEvent.title) ? withHash(title) : undefined,
               startDate,
               endDate,
             });

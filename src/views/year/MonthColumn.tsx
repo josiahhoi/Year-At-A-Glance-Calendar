@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { contrastText } from '../../model/color';
 import type { AppEvent } from '../../model/eventModel';
+import { stripHash } from '../../model/hashTag';
 import { dayOfWeek, daysInMonth, fromParts, type IsoDate } from '../../model/isoDate';
 import type { MonthSegment } from '../../model/segments';
 import { useGridDrag, type GridDragCallbacks } from './useGridDrag';
@@ -82,6 +83,8 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
           {placed.map(({ seg, lane, cols }) => {
             const span = seg.endDay - seg.startDay + 1;
             const isDragged = draggedEventId === seg.event.id;
+            const clickOnly = !!seg.event.recurringEventId || !seg.event.isAllDay;
+            const title = stripHash(seg.event.title) || '(untitled)';
             return (
               <div
                 key={segKey(seg)}
@@ -90,7 +93,7 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
                   styles.eventBlock,
                   seg.clippedTop ? styles.clippedTop : '',
                   seg.clippedBottom ? styles.clippedBottom : '',
-                  seg.event.recurringEventId ? styles.recurring : '',
+                  clickOnly ? styles.recurring : '',
                   isDragged ? styles.dragSource : '',
                 ].join(' ')}
                 style={{
@@ -101,17 +104,13 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
                   background: color,
                   color: fg,
                 }}
-                title={`${seg.event.title}\n${seg.event.startDate} → ${seg.event.endDate}`}
+                title={`${title}\n${seg.event.startDate} → ${seg.event.endDate}`}
               >
-                {!seg.event.recurringEventId && !seg.clippedTop && (
-                  <div className={styles.handleTop} />
-                )}
+                {!clickOnly && !seg.clippedTop && <div className={styles.handleTop} />}
                 <span className={styles.eventTitle} style={{ WebkitLineClamp: Math.max(span, 1) }}>
-                  {seg.event.title}
+                  {title}
                 </span>
-                {!seg.event.recurringEventId && !seg.clippedBottom && (
-                  <div className={styles.handleBottom} />
-                )}
+                {!clickOnly && !seg.clippedBottom && <div className={styles.handleBottom} />}
               </div>
             );
           })}

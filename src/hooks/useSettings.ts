@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
 export interface Settings {
-  glanceCalendarId: string | null;
   hiddenCalendarIds: string[];
   defaultView: 'year' | 'month' | 'week';
   lastYear: number | null;
@@ -10,7 +9,6 @@ export interface Settings {
 const STORAGE_KEY = 'yag.settings.v1';
 
 const DEFAULTS: Settings = {
-  glanceCalendarId: null,
   hiddenCalendarIds: [],
   defaultView: 'year',
   lastYear: null,
@@ -22,8 +20,6 @@ function load(): Settings {
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw);
     return {
-      glanceCalendarId:
-        typeof parsed.glanceCalendarId === 'string' ? parsed.glanceCalendarId : null,
       hiddenCalendarIds: Array.isArray(parsed.hiddenCalendarIds)
         ? parsed.hiddenCalendarIds.filter((x: unknown) => typeof x === 'string')
         : [],
