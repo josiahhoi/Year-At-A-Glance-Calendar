@@ -1,0 +1,302 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  flex-wrap: wrap;
+}
+
+.yearNav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.yearLabel {
+  font-size: 20px;
+  font-weight: 700;
+  min-width: 64px;
+  text-align: center;
+}
+
+.calChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.calChip:hover {
+  background: var(--bg);
+}
+
+.calDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.loading {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.loadError {
+  font-size: 12px;
+  color: var(--danger);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
+
+.gridScroll {
+  flex: 1;
+  overflow: auto;
+  padding: 0 16px 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(108px, 1fr));
+  gap: 5px;
+  min-width: 1360px;
+}
+
+.monthCol {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.monthHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.monthHeaderNow {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.monthBody {
+  position: relative;
+  height: calc(31 * var(--day-row-h));
+  touch-action: pan-x pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: cell;
+}
+
+.dayRow {
+  height: var(--day-row-h);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  display: flex;
+  align-items: center;
+}
+
+.dayWeekend {
+  background: var(--weekend-bg);
+}
+
+.dayInvalid {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    color-mix(in srgb, var(--border) 40%, transparent) 4px,
+    color-mix(in srgb, var(--border) 40%, transparent) 5px
+  );
+  border-bottom-color: transparent;
+}
+
+.dayToday {
+  background: var(--today-bg);
+}
+
+.dayToday .dayNum {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.dayNum {
+  width: 22px;
+  text-align: center;
+  font-size: 9.5px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.eventArea {
+  position: absolute;
+  inset: 0 2px 0 24px;
+}
+
+.eventBlock {
+  position: absolute;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 10.5px;
+  line-height: 1.25;
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.6);
+}
+
+.eventBlock:hover {
+  filter: brightness(0.94);
+}
+
+.eventTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.clippedTop {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: 2px dotted rgb(255 255 255 / 0.85);
+}
+
+.clippedBottom {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 2px dotted rgb(255 255 255 / 0.85);
+}
+
+.recurring {
+  cursor: pointer;
+  opacity: 0.85;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    rgb(255 255 255 / 0.15) 6px,
+    rgb(255 255 255 / 0.15) 8px
+  );
+}
+
+.dragSource {
+  opacity: 0.35;
+}
+
+.handleTop,
+.handleBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.handleTop {
+  top: 0;
+}
+
+.handleBottom {
+  bottom: 0;
+}
+
+.previewBlock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 4px;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.previewCreate {
+  background: var(--accent);
+  opacity: 0.25;
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+/* --- popover form --- */
+
+.popForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.popDates {
+  display: flex;
+  gap: 8px;
+}
+
+.popDates label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+}
+
+.popDates input {
+  width: 100%;
+}
+
+.popActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.popSpacer {
+  flex: 1;
+}
+
+.popTitle {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.popNote {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
