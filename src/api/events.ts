@@ -73,6 +73,19 @@ export async function patchAllDayEvent(
   );
 }
 
+/** Moves an event to another calendar; the event id is preserved. */
+export async function moveEvent(
+  calendarId: string,
+  eventId: string,
+  destinationCalendarId: string,
+): Promise<GEvent> {
+  const params = new URLSearchParams({ destination: destinationCalendarId });
+  return gfetch<GEvent>(
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}/move?${params}`,
+    { method: 'POST' },
+  );
+}
+
 export async function deleteEvent(calendarId: string, eventId: string): Promise<void> {
   try {
     await gfetch<null>(

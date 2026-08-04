@@ -23,11 +23,22 @@ interface MonthColumnProps {
   month: number;
   placed: PlacedSegment[];
   color: string;
+  tentativeCalendarId: string | null;
+  tentativeColor: string;
   todayDate: IsoDate;
   callbacks: GridDragCallbacks;
 }
 
-export function MonthColumn({ year, month, placed, color, todayDate, callbacks }: MonthColumnProps) {
+export function MonthColumn({
+  year,
+  month,
+  placed,
+  color,
+  tentativeCalendarId,
+  tentativeColor,
+  todayDate,
+  callbacks,
+}: MonthColumnProps) {
   const monthDays = daysInMonth(year, month);
 
   const segmentsByKey = useMemo(() => {
@@ -84,7 +95,11 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
             const span = seg.endDay - seg.startDay + 1;
             const isDragged = draggedEventId === seg.event.id;
             const clickOnly = !!seg.event.recurringEventId || !seg.event.isAllDay;
+            const isTentative = seg.event.calendarId === tentativeCalendarId;
             const title = stripHash(seg.event.title) || '(untitled)';
+            const colorStyle = isTentative
+              ? ({ '--tent-color': tentativeColor } as React.CSSProperties)
+              : { background: color, color: fg };
             return (
               <div
                 key={segKey(seg)}
@@ -94,6 +109,7 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
                   seg.clippedTop ? styles.clippedTop : '',
                   seg.clippedBottom ? styles.clippedBottom : '',
                   clickOnly ? styles.recurring : '',
+                  isTentative ? styles.tentative : '',
                   isDragged ? styles.dragSource : '',
                 ].join(' ')}
                 style={{
@@ -101,10 +117,9 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
                   height: `calc(${span} * var(--day-row-h) - 2px)`,
                   left: `${(lane / cols) * 100}%`,
                   width: `calc(${100 / cols}% - 2px)`,
-                  background: color,
-                  color: fg,
+                  ...colorStyle,
                 }}
-                title={`${title}\n${seg.event.startDate} → ${seg.event.endDate}`}
+                title={`${title}${isTentative ? ' (tentative)' : ''}\n${seg.event.startDate} → ${seg.event.endDate}`}
               >
                 {!clickOnly && !seg.clippedTop && <div className={styles.handleTop} />}
                 <span className={styles.eventTitle} style={{ WebkitLineClamp: Math.max(span, 1) }}>
@@ -121,7 +136,16 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
               style={{
                 top: `calc((${preview.startDay} - 1) * var(--day-row-h))`,
                 height: `calc(${preview.endDay - preview.startDay + 1} * var(--day-row-h))`,
-                background: preview.mode === 'create' ? undefined : color,
+                background:
+                  preview.mode === 'create'
+                    ? undefined
+                    : placed.some(
+                          (p) =>
+                            p.seg.event.id === preview.eventId &&
+                            p.seg.event.calendarId === tentativeCalendarId,
+                        )
+                      ? tentativeColor
+                      : color,
               }}
             />
           )}

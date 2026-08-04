@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CalendarInfo } from '../../api/calendarList';
+import { createCalendar, hideCalendarInGoogleUi, type CalendarInfo } from '../../api/calendarList';
+import { showToast } from '../../components/Toast';
+import { TENTATIVE_CALENDAR_NAME } from '../../config';
 import { useEventMutations } from '../../hooks/useEventMutations';
+import { updateSettings } from '../../hooks/useSettings';
 import { useYearEvents } from '../../hooks/useYearEvents';
 import type { AppEvent } from '../../model/eventModel';
 import { isHashTitle, stripHash, withHash } from '../../model/hashTag';
@@ -13,9 +16,12 @@ import { MonthColumn, segKey, type PlacedSegment } from './MonthColumn';
 import type { AnchorRect } from './useGridDrag';
 import styles from './yearView.module.css';
 
+const FALLBACK_TENTATIVE_COLOR = '#616161';
+
 interface YearViewProps {
   year: number;
   primaryCalendar: CalendarInfo | null;
+  tentativeCalendar: CalendarInfo | null;
   onNavigate: (route: Route) => void;
   onOpenSettings: () => void;
 }
@@ -24,15 +30,37 @@ type PopoverState =
   | { kind: 'create'; startDate: IsoDate; endDate: IsoDate; anchor: AnchorRect }
   | { kind: 'edit'; eventId: string; anchor: AnchorRect };
 
-export function YearView({ year, primaryCalendar, onNavigate, onOpenSettings }: YearViewProps) {
+export function YearView({
+  year,
+  primaryCalendar,
+  tentativeCalendar,
+  onNavigate,
+  onOpenSettings,
+}: YearViewProps) {
   const { data, isLoading, error, refetch } = useYearEvents(primaryCalendar?.id ?? null, year);
-  const mutations = useEventMutations(primaryCalendar?.id ?? '');
+  const tentativeQuery = useYearEvents(tentativeCalendar?.id ?? null, year);
+  const mutations = useEventMutations();
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const todayDate = today();
 
-  // The year grid shows only #-marked events from the primary calendar.
-  const events = useMemo(() => (data ?? []).filter((e) => isHashTitle(e.title)), [data]);
+  // #-marked events from the primary calendar + everything tentative.
+  const events = useMemo(
+    () => [
+      ...(data ?? []).filter((e) => isHashTitle(e.title)),
+      ...(tentativeQuery.data ?? []),
+    ],
+    [data, tentativeQuery.data],
+  );
+
+  /** Resolves the tentative calendar id, creating + hiding it on first use. */
+  const ensureTentativeCalendar = async (): Promise<string> => {
+    if (tentativeCalendar) return tentativeCalendar.id;
+    const created = await createCalendar(TENTATIVE_CALENDAR_NAME);
+    await hideCalendarInGoogleUi(created.id);
+    updateSettings({ tentativeCalendarId: created.id });
+    return created.id;
+  };
 
   // Lay out each month's segments into lanes.
   const placedByMonth = useMemo(() => {
@@ -145,6 +173,15 @@ export function YearView({ year, primaryCalendar, onNavigate, onOpenSettings }: 
           <span className={styles.calDot} style={{ background: primaryCalendar.bg }} />
           # · {primaryCalendar.summary}
         </button>
+        {tentativeCalendar && (
+          <span className={styles.calChip} title="Penciled-in items on the hidden Tentative calendar">
+            <span
+              className={styles.legendSwatch}
+              style={{ borderColor: tentativeCalendar.bg }}
+            />
+            Tentative
+          </span>
+        )}
         {isLoading && <span className={styles.loading}>Loading…</span>}
         {error != null && (
           <span className={styles.loadError}>
@@ -171,6 +208,8 @@ export function YearView({ year, primaryCalendar, onNavigate, onOpenSettings }: 
               month={month}
               placed={placedByMonth.get(month) ?? []}
               color={primaryCalendar.bg}
+              tentativeCalendarId={tentativeCalendar?.id ?? null}
+              tentativeColor={tentativeCalendar?.bg ?? FALLBACK_TENTATIVE_COLOR}
               todayDate={todayDate}
               callbacks={{
                 onClickDay: (day, anchor) => {
@@ -205,9 +244,24 @@ export function YearView({ year, primaryCalendar, onNavigate, onOpenSettings }: 
           initialStart={popover.startDate}
           initialEnd={popover.endDate}
           onClose={() => setPopover(null)}
-          onSave={(title, startDate, endDate) => {
-            // The marker lives in Google Calendar; the grid adds it for you.
-            mutations.createEvent.mutate({ title: withHash(title), startDate, endDate });
+          onSave={(title, startDate, endDate, tentative) => {
+            if (tentative) {
+              mutations.createEvent.mutate({
+                title,
+                startDate,
+                endDate,
+                calendarId: tentativeCalendar?.id,
+                ensureCalendar: tentativeCalendar ? undefined : ensureTentativeCalendar,
+              });
+            } else {
+              // The marker lives in Google Calendar; the grid adds it for you.
+              mutations.createEvent.mutate({
+                title: withHash(title),
+                startDate,
+                endDate,
+                calendarId: primaryCalendar.id,
+              });
+            }
             setPopover(null);
           }}
         />
@@ -222,14 +276,36 @@ export function YearView({ year, primaryCalendar, onNavigate, onOpenSettings }: 
           initialEnd={editingEvent.endDate}
           readOnlyReason={editingReadOnly}
           htmlLink={editingEvent.htmlLink}
+          initialTentative={editingEvent.calendarId === tentativeCalendar?.id}
           onClose={() => setPopover(null)}
-          onSave={(title, startDate, endDate) => {
-            mutations.updateEvent.mutate({
-              event: editingEvent,
-              title: title !== stripHash(editingEvent.title) ? withHash(title) : undefined,
-              startDate,
-              endDate,
-            });
+          onSave={(title, startDate, endDate, tentative) => {
+            const wasTentative = editingEvent.calendarId === tentativeCalendar?.id;
+            const titleForSide = tentative ? title : withHash(title);
+            if (tentative !== wasTentative) {
+              void (async () => {
+                try {
+                  const toCalendarId = tentative
+                    ? (tentativeCalendar?.id ?? (await ensureTentativeCalendar()))
+                    : primaryCalendar.id;
+                  mutations.changeStatus.mutate({
+                    event: editingEvent,
+                    toCalendarId,
+                    newTitle: titleForSide,
+                    startDate,
+                    endDate,
+                  });
+                } catch {
+                  showToast("Couldn't create the Tentative calendar — nothing was changed.", 'error');
+                }
+              })();
+            } else {
+              mutations.updateEvent.mutate({
+                event: editingEvent,
+                title: title !== stripHash(editingEvent.title) ? titleForSide : undefined,
+                startDate,
+                endDate,
+              });
+            }
             setPopover(null);
           }}
           onDelete={() => {

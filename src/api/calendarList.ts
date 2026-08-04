@@ -1,5 +1,5 @@
 import { gfetch } from './gcalClient';
-import type { GCalendarList } from './types';
+import type { GCalendarList, GCalendarListEntry } from './types';
 
 export interface CalendarInfo {
   id: string;
@@ -37,4 +37,26 @@ export async function listCalendars(): Promise<CalendarInfo[]> {
   return calendars.sort(
     (a, b) => Number(b.primary) - Number(a.primary) || a.summary.localeCompare(b.summary),
   );
+}
+
+export async function createCalendar(summary: string): Promise<{ id: string }> {
+  return gfetch<{ id: string }>('/calendars', {
+    method: 'POST',
+    body: JSON.stringify({ summary }),
+  });
+}
+
+/**
+ * Unchecks the calendar in Google Calendar's own UI so it never clutters
+ * the user's normal views there. Cosmetic — failures are swallowed.
+ */
+export async function hideCalendarInGoogleUi(calendarId: string): Promise<void> {
+  try {
+    await gfetch<GCalendarListEntry>(`/users/me/calendarList/${encodeURIComponent(calendarId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ selected: false }),
+    });
+  } catch {
+    // The calendar still works; it just stays visible in Google's UI.
+  }
 }
