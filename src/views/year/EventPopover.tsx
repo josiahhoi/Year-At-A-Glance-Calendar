@@ -10,7 +10,8 @@ interface EventPopoverProps {
   initialTitle: string;
   initialStart: IsoDate;
   initialEnd: IsoDate;
-  recurring?: boolean;
+  /** Present when the event can only be edited in Google Calendar. */
+  readOnlyReason?: 'recurring' | 'timed';
   htmlLink?: string;
   saving?: boolean;
   onSave: (title: string, startDate: IsoDate, endDate: IsoDate) => void;
@@ -18,13 +19,19 @@ interface EventPopoverProps {
   onClose: () => void;
 }
 
+const READ_ONLY_COPY: Record<'recurring' | 'timed', string> = {
+  recurring: 'This is a recurring event — edit it in Google Calendar to keep the series intact.',
+  timed:
+    'This event has a time of day, so the year grid leaves it alone — edit it in Google Calendar or the Week view.',
+};
+
 export function EventPopover({
   mode,
   anchor,
   initialTitle,
   initialStart,
   initialEnd,
-  recurring,
+  readOnlyReason,
   htmlLink,
   onSave,
   onDelete,
@@ -46,13 +53,11 @@ export function EventPopover({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  if (recurring) {
+  if (readOnlyReason) {
     return (
       <Popover anchor={anchor} onClose={onClose}>
         <div className={styles.popTitle}>{initialTitle}</div>
-        <div className={styles.popNote}>
-          This is a recurring event — edit it in Google Calendar to keep the series intact.
-        </div>
+        <div className={styles.popNote}>{READ_ONLY_COPY[readOnlyReason]}</div>
         <div className={styles.popActions}>
           {htmlLink && (
             <a className="btn" href={htmlLink} target="_blank" rel="noreferrer">
