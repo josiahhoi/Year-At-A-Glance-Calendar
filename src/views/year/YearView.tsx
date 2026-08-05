@@ -16,8 +16,6 @@ import { MonthColumn, segKey, type PlacedSegment } from './MonthColumn';
 import type { AnchorRect } from './useGridDrag';
 import styles from './yearView.module.css';
 
-const FALLBACK_TENTATIVE_COLOR = '#616161';
-
 interface YearViewProps {
   year: number;
   primaryCalendar: CalendarInfo | null;
@@ -175,10 +173,7 @@ export function YearView({
         </button>
         {tentativeCalendar && (
           <span className={styles.calChip} title="Penciled-in items on the hidden Tentative calendar">
-            <span
-              className={styles.legendSwatch}
-              style={{ borderColor: tentativeCalendar.bg }}
-            />
+            <span className={styles.legendSwatch} />
             Tentative
           </span>
         )}
@@ -207,9 +202,7 @@ export function YearView({
               year={year}
               month={month}
               placed={placedByMonth.get(month) ?? []}
-              color={primaryCalendar.bg}
               tentativeCalendarId={tentativeCalendar?.id ?? null}
-              tentativeColor={tentativeCalendar?.bg ?? FALLBACK_TENTATIVE_COLOR}
               todayDate={todayDate}
               callbacks={{
                 onClickDay: (day, anchor) => {
