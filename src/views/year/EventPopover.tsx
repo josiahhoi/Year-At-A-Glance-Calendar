@@ -14,7 +14,8 @@ interface EventPopoverProps {
   readOnlyReason?: 'recurring' | 'timed';
   htmlLink?: string;
   saving?: boolean;
-  onSave: (title: string, startDate: IsoDate, endDate: IsoDate) => void;
+  initialTentative?: boolean;
+  onSave: (title: string, startDate: IsoDate, endDate: IsoDate, tentative: boolean) => void;
   onDelete?: () => void;
   onClose: () => void;
 }
@@ -33,6 +34,7 @@ export function EventPopover({
   initialEnd,
   readOnlyReason,
   htmlLink,
+  initialTentative = false,
   onSave,
   onDelete,
   onClose,
@@ -40,6 +42,7 @@ export function EventPopover({
   const [title, setTitle] = useState(initialTitle);
   const [start, setStart] = useState(initialStart);
   const [end, setEnd] = useState(initialEnd);
+  const [tentative, setTentative] = useState(initialTentative);
   const titleRef = useRef<HTMLInputElement>(null);
 
   // Focus after the popover is actually visible: it stays visibility:hidden
@@ -79,7 +82,7 @@ export function EventPopover({
     if (!valid) return;
     // Inverted ranges are swapped rather than rejected.
     const [s, en] = start <= end ? [start, end] : [end, start];
-    onSave(title.trim(), s, en);
+    onSave(title.trim(), s, en, tentative);
   };
 
   return (
@@ -108,6 +111,16 @@ export function EventPopover({
             <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} required />
           </label>
         </div>
+        <label className={styles.popTentative}>
+          <input
+            type="checkbox"
+            checked={tentative}
+            onChange={(e) => setTentative(e.target.checked)}
+          />
+          <span>
+            Tentative <em>— kept off your main calendar</em>
+          </span>
+        </label>
         <div className={styles.popActions}>
           {mode === 'edit' && onDelete && (
             <button type="button" className="btn btn-danger" onClick={onDelete}>

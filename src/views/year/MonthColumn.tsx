@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { contrastText } from '../../model/color';
 import type { AppEvent } from '../../model/eventModel';
 import { stripHash } from '../../model/hashTag';
 import { dayOfWeek, daysInMonth, fromParts, type IsoDate } from '../../model/isoDate';
 import type { MonthSegment } from '../../model/segments';
+import { monthColor } from './monthColors';
 import { useGridDrag, type GridDragCallbacks } from './useGridDrag';
 import styles from './yearView.module.css';
 
@@ -22,12 +22,19 @@ interface MonthColumnProps {
   year: number;
   month: number;
   placed: PlacedSegment[];
-  color: string;
+  tentativeCalendarId: string | null;
   todayDate: IsoDate;
   callbacks: GridDragCallbacks;
 }
 
-export function MonthColumn({ year, month, placed, color, todayDate, callbacks }: MonthColumnProps) {
+export function MonthColumn({
+  year,
+  month,
+  placed,
+  tentativeCalendarId,
+  todayDate,
+  callbacks,
+}: MonthColumnProps) {
   const monthDays = daysInMonth(year, month);
 
   const segmentsByKey = useMemo(() => {
@@ -50,13 +57,23 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
 
   const isCurrentMonth = todayDate.startsWith(`${year}-${String(month).padStart(2, '0')}`);
   const draggedEventId = preview?.eventId;
-  const fg = contrastText(color);
+  const colors = monthColor(month);
 
   return (
-    <div className={styles.monthCol} data-month={month}>
-      <div className={`${styles.monthHeader} ${isCurrentMonth ? styles.monthHeaderNow : ''}`}>
-        {MONTH_NAMES[month - 1]}
-      </div>
+    <div
+      className={`${styles.monthCol} ${isCurrentMonth ? styles.monthColNow : ''}`}
+      data-month={month}
+      style={
+        {
+          '--month-header': colors.header,
+          '--month-header-fg': colors.blockFg,
+          '--month-weekend': colors.weekend,
+          '--month-block': colors.block,
+          '--month-block-fg': colors.blockFg,
+        } as React.CSSProperties
+      }
+    >
+      <div className={styles.monthHeader}>{MONTH_NAMES[month - 1]}</div>
       <div
         ref={bodyRef}
         className={styles.monthBody}
@@ -84,6 +101,7 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
             const span = seg.endDay - seg.startDay + 1;
             const isDragged = draggedEventId === seg.event.id;
             const clickOnly = !!seg.event.recurringEventId || !seg.event.isAllDay;
+            const isTentative = seg.event.calendarId === tentativeCalendarId;
             const title = stripHash(seg.event.title) || '(untitled)';
             return (
               <div
@@ -94,6 +112,7 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
                   seg.clippedTop ? styles.clippedTop : '',
                   seg.clippedBottom ? styles.clippedBottom : '',
                   clickOnly ? styles.recurring : '',
+                  isTentative ? styles.tentative : '',
                   isDragged ? styles.dragSource : '',
                 ].join(' ')}
                 style={{
@@ -101,10 +120,8 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
                   height: `calc(${span} * var(--day-row-h) - 2px)`,
                   left: `${(lane / cols) * 100}%`,
                   width: `calc(${100 / cols}% - 2px)`,
-                  background: color,
-                  color: fg,
                 }}
-                title={`${title}\n${seg.event.startDate} → ${seg.event.endDate}`}
+                title={`${title}${isTentative ? ' (tentative)' : ''}\n${seg.event.startDate} → ${seg.event.endDate}`}
               >
                 {!clickOnly && !seg.clippedTop && <div className={styles.handleTop} />}
                 <span className={styles.eventTitle} style={{ WebkitLineClamp: Math.max(span, 1) }}>
@@ -121,7 +138,6 @@ export function MonthColumn({ year, month, placed, color, todayDate, callbacks }
               style={{
                 top: `calc((${preview.startDay} - 1) * var(--day-row-h))`,
                 height: `calc(${preview.endDay - preview.startDay + 1} * var(--day-row-h))`,
-                background: preview.mode === 'create' ? undefined : color,
               }}
             />
           )}

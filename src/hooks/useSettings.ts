@@ -4,6 +4,7 @@ export interface Settings {
   hiddenCalendarIds: string[];
   defaultView: 'year' | 'month' | 'week';
   lastYear: number | null;
+  tentativeCalendarId: string | null;
 }
 
 const STORAGE_KEY = 'yag.settings.v1';
@@ -12,6 +13,7 @@ const DEFAULTS: Settings = {
   hiddenCalendarIds: [],
   defaultView: 'year',
   lastYear: null,
+  tentativeCalendarId: null,
 };
 
 function load(): Settings {
@@ -27,6 +29,8 @@ function load(): Settings {
         ? parsed.defaultView
         : 'year',
       lastYear: typeof parsed.lastYear === 'number' ? parsed.lastYear : null,
+      tentativeCalendarId:
+        typeof parsed.tentativeCalendarId === 'string' ? parsed.tentativeCalendarId : null,
     };
   } catch {
     return DEFAULTS;

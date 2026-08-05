@@ -3,7 +3,7 @@ import styles from './app.module.css';
 import { useAuth } from './auth/AuthContext';
 import { showToast, ToastHost } from './components/Toast';
 import { SettingsModal } from './components/SettingsModal';
-import { GOOGLE_CLIENT_ID } from './config';
+import { GOOGLE_CLIENT_ID, TENTATIVE_CALENDAR_NAME } from './config';
 import { useCalendars } from './hooks/useCalendars';
 import { updateSettings, useSettings } from './hooks/useSettings';
 import { monthOf, today, yearOf } from './model/isoDate';
@@ -56,7 +56,21 @@ function SignedInApp() {
     }
   }, [route, settings.lastYear]);
 
+  // Recognize an existing tentative calendar (e.g. created on another device).
+  // A stored id that's missing from the list is left alone — the list may be
+  // momentarily stale right after auto-creation, and a truly dangling id is
+  // harmless (the calendar just resolves as absent until recreated).
+  useEffect(() => {
+    if (!calendars.data) return;
+    const stored = settings.tentativeCalendarId;
+    if (stored && calendars.data.some((c) => c.id === stored)) return;
+    const byName = calendars.data.find((c) => c.summary === TENTATIVE_CALENDAR_NAME && c.writable);
+    if (byName && byName.id !== stored) updateSettings({ tentativeCalendarId: byName.id });
+  }, [calendars.data, settings.tentativeCalendarId]);
+
   const primaryCalendar = calendars.data?.find((c) => c.primary) ?? null;
+  const tentativeCalendar =
+    calendars.data?.find((c) => c.id === settings.tentativeCalendarId) ?? null;
 
   return (
     <div className={styles.shell}>
@@ -93,6 +107,7 @@ function SignedInApp() {
           <YearView
             year={route.year}
             primaryCalendar={primaryCalendar}
+            tentativeCalendar={tentativeCalendar}
             onNavigate={navigate}
             onOpenSettings={() => setSettingsOpen(true)}
           />

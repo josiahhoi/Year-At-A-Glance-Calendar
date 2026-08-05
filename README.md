@@ -17,6 +17,18 @@ with `#`. That's the whole rule:
   with the `#` added automatically.
 - Remove the `#` in Google Calendar → it drops off the year grid.
 
+## Tentative items
+
+Need to pencil something in (school breaks, maybe-trips) without it touching
+your real calendar? Tick **Tentative** in the event popover. Tentative items:
+
+- live on a separate **`Tentative (YAAG)`** calendar the app creates
+  automatically and keeps *hidden* in Google Calendar's own UI — so they sync
+  across your devices but never appear in your normal Google views
+- render on the year grid in a **ghost style** (dashed outline, striped fill)
+- can be flipped later: uncheck Tentative to move an item onto your primary
+  calendar as a confirmed `#`-event, or check it to demote a confirmed one
+
 ## Views
 
 - **Year** — 12 month columns with day rows, exactly like the spreadsheet
