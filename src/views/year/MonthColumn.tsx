@@ -22,7 +22,8 @@ interface MonthColumnProps {
   year: number;
   month: number;
   placed: PlacedSegment[];
-  tentativeCalendarId: string | null;
+  tentativeCalIds: Set<string>;
+  sharedCalIds: Set<string>;
   todayDate: IsoDate;
   callbacks: GridDragCallbacks;
 }
@@ -31,7 +32,8 @@ export function MonthColumn({
   year,
   month,
   placed,
-  tentativeCalendarId,
+  tentativeCalIds,
+  sharedCalIds,
   todayDate,
   callbacks,
 }: MonthColumnProps) {
@@ -43,7 +45,14 @@ export function MonthColumn({
     return map;
   }, [placed]);
 
-  const { bodyRef, preview, handlers } = useGridDrag(year, month, monthDays, segmentsByKey, callbacks);
+  const { bodyRef, preview, handlers } = useGridDrag(
+    year,
+    month,
+    monthDays,
+    segmentsByKey,
+    sharedCalIds,
+    callbacks,
+  );
 
   const days = useMemo(() => {
     return Array.from({ length: 31 }, (_, i) => {
@@ -100,8 +109,9 @@ export function MonthColumn({
           {placed.map(({ seg, lane, cols }) => {
             const span = seg.endDay - seg.startDay + 1;
             const isDragged = draggedEventId === seg.event.id;
-            const clickOnly = !!seg.event.recurringEventId || !seg.event.isAllDay;
-            const isTentative = seg.event.calendarId === tentativeCalendarId;
+            const isTentative = tentativeCalIds.has(seg.event.calendarId);
+            const isShared = sharedCalIds.has(seg.event.calendarId);
+            const clickOnly = !!seg.event.recurringEventId || !seg.event.isAllDay || isShared;
             const title = stripHash(seg.event.title) || '(untitled)';
             return (
               <div
@@ -112,6 +122,7 @@ export function MonthColumn({
                   seg.clippedTop ? styles.clippedTop : '',
                   seg.clippedBottom ? styles.clippedBottom : '',
                   clickOnly ? styles.recurring : '',
+                  isShared && !isTentative ? styles.shared : '',
                   isTentative ? styles.tentative : '',
                   isDragged ? styles.dragSource : '',
                 ].join(' ')}
@@ -121,7 +132,7 @@ export function MonthColumn({
                   left: `${(lane / cols) * 100}%`,
                   width: `calc(${100 / cols}% - 2px)`,
                 }}
-                title={`${title}${isTentative ? ' (tentative)' : ''}\n${seg.event.startDate} → ${seg.event.endDate}`}
+                title={`${title}${isTentative ? ' (tentative)' : ''}${isShared ? ' (shared)' : ''}\n${seg.event.startDate} → ${seg.event.endDate}`}
               >
                 {!clickOnly && !seg.clippedTop && <div className={styles.handleTop} />}
                 <span className={styles.eventTitle} style={{ WebkitLineClamp: Math.max(span, 1) }}>

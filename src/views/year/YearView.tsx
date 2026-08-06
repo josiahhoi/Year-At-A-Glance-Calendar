@@ -3,8 +3,8 @@ import { createCalendar, hideCalendarInGoogleUi, type CalendarInfo } from '../..
 import { showToast } from '../../components/Toast';
 import { TENTATIVE_CALENDAR_NAME } from '../../config';
 import { useEventMutations } from '../../hooks/useEventMutations';
-import { updateSettings } from '../../hooks/useSettings';
-import { useYearEvents } from '../../hooks/useYearEvents';
+import { updateSettings, useSettings } from '../../hooks/useSettings';
+import { useMultiYearEvents, useYearEvents } from '../../hooks/useYearEvents';
 import type { AppEvent } from '../../model/eventModel';
 import { isHashTitle, stripHash, withHash } from '../../model/hashTag';
 import { layoutIntervals, type IntervalItem } from '../../model/lanes';
@@ -20,6 +20,7 @@ interface YearViewProps {
   year: number;
   primaryCalendar: CalendarInfo | null;
   tentativeCalendar: CalendarInfo | null;
+  calendars: CalendarInfo[];
   onNavigate: (route: Route) => void;
   onOpenSettings: () => void;
 }
@@ -32,9 +33,11 @@ export function YearView({
   year,
   primaryCalendar,
   tentativeCalendar,
+  calendars,
   onNavigate,
   onOpenSettings,
 }: YearViewProps) {
+  const settings = useSettings();
   const { data, isLoading, error, refetch } = useYearEvents(primaryCalendar?.id ?? null, year);
   const tentativeQuery = useYearEvents(tentativeCalendar?.id ?? null, year);
   const mutations = useEventMutations();
@@ -42,13 +45,44 @@ export function YearView({
   const gridRef = useRef<HTMLDivElement>(null);
   const todayDate = today();
 
-  // #-marked events from the primary calendar + everything tentative.
+  // Extra view-only sources (e.g. the spouse's calendar), still present
+  // in the calendar list and distinct from the user's own calendars.
+  const sharedSourceIds = useMemo(
+    () =>
+      settings.glanceSourceIds.filter(
+        (id) =>
+          id !== primaryCalendar?.id &&
+          id !== tentativeCalendar?.id &&
+          calendars.some((c) => c.id === id),
+      ),
+    [settings.glanceSourceIds, primaryCalendar?.id, tentativeCalendar?.id, calendars],
+  );
+  const sharedEvents = useMultiYearEvents(sharedSourceIds, year);
+
+  const sharedCalIds = useMemo(() => new Set(sharedSourceIds), [sharedSourceIds]);
+  // Ghost-styled calendars: the user's own tentative layer plus any shared
+  // "Tentative (YAAG)" calendar (a spouse's penciled-in items).
+  const tentativeCalIds = useMemo(() => {
+    const set = new Set<string>();
+    if (tentativeCalendar) set.add(tentativeCalendar.id);
+    for (const id of sharedSourceIds) {
+      const cal = calendars.find((c) => c.id === id);
+      if (cal?.summary === TENTATIVE_CALENDAR_NAME) set.add(id);
+    }
+    return set;
+  }, [tentativeCalendar, sharedSourceIds, calendars]);
+
+  // Own #-events + everything tentative + shared sources (#-filtered,
+  // except shared tentative calendars which show everything).
   const events = useMemo(
     () => [
       ...(data ?? []).filter((e) => isHashTitle(e.title)),
       ...(tentativeQuery.data ?? []),
+      ...sharedEvents.events.filter(
+        (e) => tentativeCalIds.has(e.calendarId) || isHashTitle(e.title),
+      ),
     ],
-    [data, tentativeQuery.data],
+    [data, tentativeQuery.data, sharedEvents.events, tentativeCalIds],
   );
 
   /** Resolves the tentative calendar id, creating + hiding it on first use. */
@@ -131,11 +165,13 @@ export function YearView({
 
   const editingEvent = popover?.kind === 'edit' ? eventById.get(popover.eventId) : undefined;
   const editingReadOnly = editingEvent
-    ? editingEvent.recurringEventId
-      ? ('recurring' as const)
-      : !editingEvent.isAllDay
-        ? ('timed' as const)
-        : undefined
+    ? sharedCalIds.has(editingEvent.calendarId)
+      ? ('shared' as const)
+      : editingEvent.recurringEventId
+        ? ('recurring' as const)
+        : !editingEvent.isAllDay
+          ? ('timed' as const)
+          : undefined
     : undefined;
 
   return (
@@ -177,6 +213,12 @@ export function YearView({
             Tentative
           </span>
         )}
+        {sharedSourceIds.length > 0 && (
+          <span className={styles.calChip} title="Events from calendars shared with you — view only">
+            <span className={styles.legendSwatchShared} />
+            Shared · view only
+          </span>
+        )}
         {isLoading && <span className={styles.loading}>Loading…</span>}
         {error != null && (
           <span className={styles.loadError}>
@@ -202,7 +244,8 @@ export function YearView({
               year={year}
               month={month}
               placed={placedByMonth.get(month) ?? []}
-              tentativeCalendarId={tentativeCalendar?.id ?? null}
+              tentativeCalIds={tentativeCalIds}
+              sharedCalIds={sharedCalIds}
               todayDate={todayDate}
               callbacks={{
                 onClickDay: (day, anchor) => {

@@ -5,6 +5,8 @@ export interface Settings {
   defaultView: 'year' | 'month' | 'week';
   lastYear: number | null;
   tentativeCalendarId: string | null;
+  /** Extra calendars whose #-events also show on the year grid (view-only). */
+  glanceSourceIds: string[];
 }
 
 const STORAGE_KEY = 'yag.settings.v1';
@@ -14,6 +16,7 @@ const DEFAULTS: Settings = {
   defaultView: 'year',
   lastYear: null,
   tentativeCalendarId: null,
+  glanceSourceIds: [],
 };
 
 function load(): Settings {
@@ -31,6 +34,9 @@ function load(): Settings {
       lastYear: typeof parsed.lastYear === 'number' ? parsed.lastYear : null,
       tentativeCalendarId:
         typeof parsed.tentativeCalendarId === 'string' ? parsed.tentativeCalendarId : null,
+      glanceSourceIds: Array.isArray(parsed.glanceSourceIds)
+        ? parsed.glanceSourceIds.filter((x: unknown) => typeof x === 'string')
+        : [],
     };
   } catch {
     return DEFAULTS;
