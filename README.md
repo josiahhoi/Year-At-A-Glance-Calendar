@@ -29,6 +29,27 @@ your real calendar? Tick **Tentative** in the event popover. Tentative items:
 - can be flipped later: uncheck Tentative to move an item onto your primary
   calendar as a confirmed `#`-event, or check it to demote a confirmed one
 
+## Sharing with your spouse (or anyone)
+
+Each person signs into the app with their **own** Google account and sees
+their own year grid. To see each other's events:
+
+1. **Share calendars in Google Calendar** (both directions): Settings →
+   your calendar → *Share with specific people* → add the other person with
+   **"See all event details"**. (That's enough — the app never edits shared
+   calendars.)
+2. **Add them as an OAuth test user**: Google Cloud Console → OAuth consent
+   screen → Test users → add their Gmail address, or they'll get
+   `access_denied` at sign-in.
+3. **In the app**, each person opens ⚙️ Settings → *"Also show # events
+   from…"* and ticks the other's calendar.
+
+Their `#`-events then appear on your year grid **outlined** (white fill,
+month-color border) and strictly **view-only** — clicking shows details and
+a link to Google Calendar. Month/Week views show shared calendars like
+Google Calendar does, with toggles. If they share their `Tentative (YAAG)`
+calendar too, ticking it shows their penciled-in items ghost-style.
+
 ## Views
 
 - **Year** — 12 month columns with day rows, exactly like the spreadsheet

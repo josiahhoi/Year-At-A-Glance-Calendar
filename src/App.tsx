@@ -108,6 +108,7 @@ function SignedInApp() {
             year={route.year}
             primaryCalendar={primaryCalendar}
             tentativeCalendar={tentativeCalendar}
+            calendars={calendars.data}
             onNavigate={navigate}
             onOpenSettings={() => setSettingsOpen(true)}
           />

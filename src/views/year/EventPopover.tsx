@@ -11,7 +11,7 @@ interface EventPopoverProps {
   initialStart: IsoDate;
   initialEnd: IsoDate;
   /** Present when the event can only be edited in Google Calendar. */
-  readOnlyReason?: 'recurring' | 'timed';
+  readOnlyReason?: 'recurring' | 'timed' | 'shared';
   htmlLink?: string;
   saving?: boolean;
   initialTentative?: boolean;
@@ -20,10 +20,11 @@ interface EventPopoverProps {
   onClose: () => void;
 }
 
-const READ_ONLY_COPY: Record<'recurring' | 'timed', string> = {
+const READ_ONLY_COPY: Record<'recurring' | 'timed' | 'shared', string> = {
   recurring: 'This is a recurring event — edit it in Google Calendar to keep the series intact.',
   timed:
     'This event has a time of day, so the year grid leaves it alone — edit it in Google Calendar or the Week view.',
+  shared: 'This event is from a calendar shared with you — view only here.',
 };
 
 export function EventPopover({
