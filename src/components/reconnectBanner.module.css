@@ -1,0 +1,28 @@
+/* Static (not fixed/overlaid) so it takes its own space above the topbar
+   instead of covering it — the tabs and settings button stay reachable. */
+.banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 8px 16px;
+  background: var(--today-bg);
+  border-bottom: 1px solid var(--today-ring);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.banner .btn {
+  padding: 4px 12px;
+  font-size: 12.5px;
+}
+
+@media (max-width: 640px) {
+  .banner {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 12px;
+    text-align: center;
+  }
+}

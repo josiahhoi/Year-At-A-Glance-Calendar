@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import styles from './app.module.css';
 import { useAuth } from './auth/AuthContext';
 import { showToast, ToastHost } from './components/Toast';
+import { ReconnectBanner } from './components/ReconnectBanner';
 import { SettingsModal } from './components/SettingsModal';
 import { GOOGLE_CLIENT_ID, TENTATIVE_CALENDAR_NAME } from './config';
 import { useCalendars } from './hooks/useCalendars';
@@ -21,29 +22,32 @@ export function App() {
     return <div className={styles.splash}>Connecting to Google Calendar…</div>;
   }
 
-  if (status === 'signed-out' || status === 'needs-signin') {
+  if (status === 'signed-out') {
     return (
       <div className={styles.splash}>
         <h1 className={styles.splashTitle}>📅 Year at a Glance</h1>
         <p className={styles.splashText}>
-          {status === 'needs-signin'
-            ? 'Your Google session needs to be reconnected.'
-            : 'See and edit your whole year alongside your Google Calendar.'}
+          See and edit your whole year alongside your Google Calendar.
         </p>
         <button
           className="btn btn-primary"
           onClick={() => signIn().catch(() => showToast('Sign-in was cancelled.', 'error'))}
         >
-          {status === 'needs-signin' ? 'Reconnect Google Calendar' : 'Sign in with Google'}
+          Sign in with Google
         </button>
       </div>
     );
   }
 
+  // 'needs-signin' (a background token refresh failed — expected periodically
+  // on Safari, which blocks the silent renewal check) falls through here too:
+  // SignedInApp stays mounted and shows a small ReconnectBanner instead of
+  // losing whatever the user was looking at.
   return <SignedInApp />;
 }
 
 function SignedInApp() {
+  const { status, signIn } = useAuth();
   const [route, navigate] = useRoute();
   const settings = useSettings();
   const calendars = useCalendars();
@@ -74,6 +78,10 @@ function SignedInApp() {
 
   return (
     <div className={styles.shell}>
+      {/* Only shown once there's an existing view underneath it worth preserving —
+          a cold load that never had a working token surfaces its own Reconnect
+          button in the calendars-error box below instead. */}
+      {status === 'needs-signin' && calendars.data && <ReconnectBanner />}
       <header className={styles.topbar}>
         <span className={styles.brand}>📅 Year at a Glance</span>
         <nav className={styles.tabs}>
@@ -98,9 +106,18 @@ function SignedInApp() {
         {calendars.error != null && (
           <div className={styles.splash}>
             Couldn't load your calendars. <br />
-            <button className="btn" onClick={() => calendars.refetch()}>
-              Retry
-            </button>
+            {status === 'needs-signin' ? (
+              <button
+                className="btn btn-primary"
+                onClick={() => signIn().catch(() => showToast('Sign-in was cancelled.', 'error'))}
+              >
+                Reconnect
+              </button>
+            ) : (
+              <button className="btn" onClick={() => calendars.refetch()}>
+                Retry
+              </button>
+            )}
           </div>
         )}
         {calendars.data && route.view === 'year' && (
